@@ -1,0 +1,33 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+alembic/versions/__pycache__/
+
+# Environment and package tooling
+.env.*
+!.env.example
+.python-version
+pip-wheel-metadata/
+
+# Type checkers, linters, and test reports
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
