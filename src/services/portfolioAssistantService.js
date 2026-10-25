@@ -101,7 +101,6 @@ async function generateGeminiReply({ message, history, planContext }) {
     },
   ];
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const requestOptions = {
     method: "POST",
     headers: {
@@ -116,7 +115,7 @@ async function generateGeminiReply({ message, history, planContext }) {
       },
     }),
   };
-  const response = await fetchGeminiWithRetry(url, requestOptions);
+  const response = await fetchGeminiWithFallback(model, requestOptions);
 
   if (!response.ok) {
     const errorPayload = await response.json().catch(() => null);
@@ -140,31 +139,48 @@ async function generateGeminiReply({ message, history, planContext }) {
   return reply.trim();
 }
 
-async function fetchGeminiWithRetry(url, requestOptions) {
-  const maxAttempts = 2;
-  const timeoutMs = 25_000;
+async function fetchGeminiWithFallback(primaryModel, requestOptions) {
+  // Try the configured main model first, then a separate stable Flash model if
+  // this one is overloaded or takes too long. This keeps the answer on Gemini
+  // when one provider model is temporarily unavailable.
+  const fallbackModel = (process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash").trim();
+  const models = [...new Set([primaryModel, fallbackModel].filter(Boolean))];
+  let lastError;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const response = await fetch(url, {
-      ...requestOptions,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+  for (let index = 0; index < models.length; index++) {
+    const model = models[index];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
-    const retryable = [429, 500, 502, 503, 504].includes(response.status);
-    if (!retryable || attempt === maxAttempts) {
+    try {
+      const response = await fetch(url, {
+        ...requestOptions,
+        signal: AbortSignal.timeout(18_000),
+      });
+
+      const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
+      if (retryable && index < models.length - 1) {
+        const detail = await response.text().catch(() => "");
+        console.warn(
+          `Gemini model ${model} returned HTTP ${response.status}; trying fallback model ${models[index + 1]}.${detail ? ` ${detail.slice(0, 180)}` : ""}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        continue;
+      }
+
       return response;
-    }
+    } catch (error) {
+      lastError = error;
+      if (index === models.length - 1) throw error;
 
-    const retryDelayMs = 800 * attempt;
-    console.warn(
-      `Gemini returned transient HTTP ${response.status}; retrying once in ${retryDelayMs}ms.`,
-    );
-    // Consume the first response before retrying it.
-    await response.text().catch(() => "");
-    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      console.warn(
+        `Gemini model ${model} failed or timed out; trying fallback model ${models[index + 1]}.`,
+        error?.message ?? error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 
-  throw new Error("Gemini request failed after retry.");
+  throw lastError ?? new Error("Gemini request failed for all configured models.");
 }
 
 function explainAllocation(planContext, portfolio) {
