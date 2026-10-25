@@ -80,6 +80,7 @@ async function generateGeminiReply({ message, history, planContext }) {
     "Be clear when the saved context does not contain the information needed to answer. Keep answers practical and reasonably concise.",
     "Format all responses as clean Markdown: start with a short useful heading when appropriate; use **bold** for important figures or labels; use short paragraphs; use numbered steps for processes and bullet lists for comparisons; use a Markdown table only when it genuinely improves a comparison; separate sections with blank lines. Avoid raw HTML, giant paragraphs, excessive headings, and repeating the disclaimer in every section.",
     "When discussing the user's generated portfolio, explicitly distinguish saved portfolio facts from general educational explanation. Never suggest that a hypothetical alternative has already been applied to the saved portfolio.",
+    "Return a complete answer. Never end mid-sentence, mid-word, or with an opening Markdown marker. For projection questions, explain the assumption, contribution amount, horizon, and actual illustrative future value from the supplied context when available. Keep the answer concise enough to finish cleanly.",
   ].join(" ");
 
   const contents = [
@@ -128,13 +129,44 @@ async function generateGeminiReply({ message, history, planContext }) {
   }
 
   const payload = await response.json();
-  const reply = payload?.candidates?.[0]?.content?.parts
+  const candidate = payload?.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+  const reply = candidate?.content?.parts
     ?.map((part) => typeof part.text === "string" ? part.text : "")
     .join("")
     .trim();
 
   if (!reply) throw new Error("Gemini returned no usable text.");
+  if (finishReason === "MAX_TOKENS") {
+    throw new Error("Gemini stopped at its output-token limit before completing the answer.");
+  }
+  if (hasUnclosedMarkdown(reply) || looksIncomplete(reply)) {
+    throw new Error("Gemini returned an incomplete answer; using the local portfolio explanation instead.");
+  }
   return reply;
+}
+
+function hasUnclosedMarkdown(text) {
+  const markers = ["**", "__", "~~", "```"];
+  return markers.some((marker) => {
+    const count = text.split(marker).length - 1;
+    return count % 2 !== 0;
+  });
+}
+
+function looksIncomplete(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+
+  // Clear signs of an interrupted answer, while allowing bullets and headings
+  // that legitimately do not end with a period.
+  if (/[,:;—-]$/.test(trimmed)) return true;
+  if (/(?:a|an|the|and|or|but|to|of|for|with|over|under|at|in|on|your|my|their|its|could|would|should|because|which|that)s*$/i.test(trimmed)) return true;
+
+  const lastLine = trimmed.split(/?
+/).at(-1)?.trim() ?? "";
+  if (/^(?:[-*+]|d+.)s*$/.test(lastLine)) return true;
+  return false;
 }
 
 function explainAllocation(planContext, portfolio) {
