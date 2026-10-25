@@ -5,9 +5,7 @@ import RiskAssessment from "../models/RiskAssessment.js";
 import User from "../models/User.js";
 import { HttpError } from "../middleware/errors.js";
 import { calculateProjections } from "../services/planCalculations.js";
-import { generateAssistantReply } from "../services/geminiAssistantService.js";
-import { getMarketNewsSnapshot } from "../services/marketNewsService.js";
-import { getAssistantLiveMarketContext } from "../services/assistantLiveMarketService.js";
+import { generateAssistantReply } from "../services/portfolioAssistantService.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 6;
@@ -84,23 +82,8 @@ export async function sendAssistantMessage(req, res) {
     });
   }
 
-  const latestMarketNews = shouldFetchMarketNews(message)
-    ? await getMarketNewsSnapshot({ investmentOptions: portfolio?.investment_options, topic: message })
-    : null;
-  const liveProviderData = shouldFetchLiveProviderData(message)
-    ? await getAssistantLiveMarketContext({ investmentOptions: portfolio?.investment_options, message })
-    : null;
-
-  const result = await generateAssistantReply({ message, history, planContext, latestMarketNews, liveProviderData });
+  const result = await generateAssistantReply({ message, history, planContext });
   return res.json(result);
-}
-
-function shouldFetchMarketNews(message) {
-  return /\b(latest|current|today|news|market|price|prices|impact|affect|effect|happening|update)\b/i.test(message);
-}
-
-function shouldFetchLiveProviderData(message) {
-  return /\b(latest|current|today|news|market|nav|fund|price|prices|impact|affect|effect|happening|update|oil|crude)\b/i.test(message);
 }
 
 function isRebalanceRequest(message) {

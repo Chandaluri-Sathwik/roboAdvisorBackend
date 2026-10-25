@@ -84,7 +84,7 @@ test("unknown routes return the same error shape used by the frontend", async ()
   assert.equal(body.detail, "Route not found.");
 });
 
-test("provider timeout details remain visible to the assistant frontend", () => {
+test("assistant service errors remain visible to the assistant frontend", () => {
   let statusCode;
   let responseBody;
   const response = {
@@ -99,10 +99,10 @@ test("provider timeout details remain visible to the assistant frontend", () => 
     },
   };
 
-  errorHandler(new HttpError(504, "Gemini did not respond within 45 seconds. Please try again."), {}, response, () => {});
+  errorHandler(new HttpError(503, "The portfolio assistant is temporarily unavailable. Please try again."), {}, response, () => {});
 
-  assert.equal(statusCode, 504);
-  assert.equal(responseBody.detail, "Gemini did not respond within 45 seconds. Please try again.");
+  assert.equal(statusCode, 503);
+  assert.equal(responseBody.detail, "The portfolio assistant is temporarily unavailable. Please try again.");
 });
 
 test("goal request validation accepts one contribution mode and no target amount", () => {
