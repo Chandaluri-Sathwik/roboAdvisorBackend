@@ -78,9 +78,9 @@ async function generateGeminiReply({ message, history, planContext }) {
     "Treat historical returns and projections as backward-looking or illustrative, never as guaranteed or predicted results.",
     "Never tell the user to buy or sell a particular asset as a certainty. Do not claim to place trades. Any rebalance action in this application is a local simulation only.",
     "Be clear when the saved context does not contain the information needed to answer. Keep answers practical and reasonably concise.",
-    "Format all responses as clean Markdown: start with a short useful heading when appropriate; use **bold** for important figures or labels; use short paragraphs; use numbered steps for processes and bullet lists for comparisons; use a Markdown table only when it genuinely improves a comparison; separate sections with blank lines. Avoid raw HTML, giant paragraphs, excessive headings, and repeating the disclaimer in every section.",
+    "Respond in plain text, not Markdown. Do not use Markdown heading markers, bold/italic markers, backticks, or Markdown tables. Use normal sentences, short paragraphs, and line breaks; simple bullet characters are okay when they improve readability.",
     "When discussing the user's generated portfolio, explicitly distinguish saved portfolio facts from general educational explanation. Never suggest that a hypothetical alternative has already been applied to the saved portfolio.",
-    "Return a complete answer. Never end mid-sentence, mid-word, or with an opening Markdown marker. For projection questions, explain the assumption, contribution amount, horizon, and actual illustrative future value from the supplied context when available. Keep the answer concise enough to finish cleanly.",
+    "Give a useful, complete answer at a natural length. For projection questions, explain the assumption, contribution amount, horizon, and illustrative future value from the supplied context when available. Do not replace an answer with a canned portfolio summary just because the requested response format is plain text.",
   ].join(" ");
 
   const contents = [
@@ -113,10 +113,10 @@ async function generateGeminiReply({ message, history, planContext }) {
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents,
         generationConfig: {
-          maxOutputTokens: 900,
+          maxOutputTokens: 1200,
         },
       }),
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(15_000),
     },
   );
 
