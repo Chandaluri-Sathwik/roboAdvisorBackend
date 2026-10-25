@@ -147,7 +147,7 @@ async function generateGeminiReply({ message, history, planContext }) {
 }
 
 function hasUnclosedMarkdown(text) {
-  const markers = ["**", "__", "~~", "```"];
+  const markers = ["**", "__", "~~", "\u0060\u0060\u0060"];
   return markers.some((marker) => {
     const count = text.split(marker).length - 1;
     return count % 2 !== 0;
@@ -161,11 +161,10 @@ function looksIncomplete(text) {
   // Clear signs of an interrupted answer, while allowing bullets and headings
   // that legitimately do not end with a period.
   if (/[,:;—-]$/.test(trimmed)) return true;
-  if (/(?:a|an|the|and|or|but|to|of|for|with|over|under|at|in|on|your|my|their|its|could|would|should|because|which|that)s*$/i.test(trimmed)) return true;
+  if (/\b(?:a|an|the|and|or|but|to|of|for|with|over|under|at|in|on|your|my|their|its|could|would|should|because|which|that)\s*$/i.test(trimmed)) return true;
 
-  const lastLine = trimmed.split(/?
-/).at(-1)?.trim() ?? "";
-  if (/^(?:[-*+]|d+.)s*$/.test(lastLine)) return true;
+  const lastLine = trimmed.split(/\r?\n/).at(-1)?.trim() ?? "";
+  if (/^(?:[-*+]|\d+\.)\s*$/.test(lastLine)) return true;
   return false;
 }
 
