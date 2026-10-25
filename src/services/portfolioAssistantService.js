@@ -130,42 +130,16 @@ async function generateGeminiReply({ message, history, planContext }) {
 
   const payload = await response.json();
   const candidate = payload?.candidates?.[0];
-  const finishReason = candidate?.finishReason;
   const reply = candidate?.content?.parts
     ?.map((part) => typeof part.text === "string" ? part.text : "")
-    .join("")
-    .trim();
+    .join("");
 
-  if (!reply) throw new Error("Gemini returned no usable text.");
-  if (finishReason === "MAX_TOKENS") {
-    throw new Error("Gemini stopped at its output-token limit before completing the answer.");
+  // Preserve Gemini's generated text. Do not parse Markdown, rewrite it, or
+  // replace it with the local answer based on formatting heuristics.
+  if (typeof reply !== "string" || !reply.trim()) {
+    throw new Error("Gemini returned no usable text.");
   }
-  if (hasUnclosedMarkdown(reply) || looksIncomplete(reply)) {
-    throw new Error("Gemini returned an incomplete answer; using the local portfolio explanation instead.");
-  }
-  return reply;
-}
-
-function hasUnclosedMarkdown(text) {
-  const markers = ["**", "__", "~~", "\u0060\u0060\u0060"];
-  return markers.some((marker) => {
-    const count = text.split(marker).length - 1;
-    return count % 2 !== 0;
-  });
-}
-
-function looksIncomplete(text) {
-  const trimmed = text.trim();
-  if (!trimmed) return true;
-
-  // Clear signs of an interrupted answer, while allowing bullets and headings
-  // that legitimately do not end with a period.
-  if (/[,:;—-]$/.test(trimmed)) return true;
-  if (/\b(?:a|an|the|and|or|but|to|of|for|with|over|under|at|in|on|your|my|their|its|could|would|should|because|which|that)\s*$/i.test(trimmed)) return true;
-
-  const lastLine = trimmed.split(/\r?\n/).at(-1)?.trim() ?? "";
-  if (/^(?:[-*+]|\d+\.)\s*$/.test(lastLine)) return true;
-  return false;
+  return reply.trim();
 }
 
 function explainAllocation(planContext, portfolio) {
