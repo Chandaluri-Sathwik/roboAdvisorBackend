@@ -1,4 +1,4 @@
-const VALID_PROXY_CLASSES = new Set(["equity", "debt", "gold", "cash_proxy"]);
+const VALID_PROXY_CLASSES = new Set(["equity", "debt", "gold", "commodity", "cash_proxy"]);
 
 export function validateConfiguredFundMetadata(fund, records) {
   if (!VALID_PROXY_CLASSES.has(fund.assetClass)) {

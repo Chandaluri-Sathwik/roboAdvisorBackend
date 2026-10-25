@@ -31,16 +31,16 @@ function dailySeries({ start, count, valueAt = (index) => 100 + index }) {
 
 test("catalog keeps asset semantics explicit and excludes everything from recommendation eligibility", () => {
   assert.ok(ASSET_CATALOG.some((item) => item.assetType === "stock" && item.assetClass === "equity"));
-  assert.equal(mutualFundUniverse.length, 8);
+  assert.equal(mutualFundUniverse.length, 11);
   assert.equal(targetFundCountPerProxyClass, 3);
   assert.deepEqual(
     Object.fromEntries(
-      ["equity", "debt", "gold", "cash_proxy"].map((assetClass) => [
+      ["equity", "debt", "gold", "commodity", "cash_proxy"].map((assetClass) => [
         assetClass,
         mutualFundUniverse.filter((fund) => fund.assetClass === assetClass).length,
       ]),
     ),
-    { equity: 3, debt: 1, gold: 3, cash_proxy: 1 },
+    { equity: 3, debt: 1, gold: 3, commodity: 3, cash_proxy: 1 },
   );
   assert.ok(ASSET_CATALOG.some((item) => item.assetType === "mutualFund" && item.assetClass === "debt"));
   assert.ok(ASSET_CATALOG.some((item) => item.assetType === "commodity" && item.currency === "USD"));
@@ -92,6 +92,9 @@ test("all configured additional proxies match their verified MFapi names and cat
     119781: ["Kotak Gold Fund - Direct Plan - Growth", "Other Scheme - FoF Domestic"],
     154295: ["HSBC Gold ETF Fund of Fund - Direct Plan - Growth", "Fund of Funds Scheme (Domestic) - Fund of Funds Scheme (Domestic)"],
     119132: ["HDFC Gold ETF Fund of Fund - Direct Plan - Growth Option", "Other Scheme - FoF Domestic"],
+    149760: ["Nippon India Silver ETF FOF - Direct Plan - Growth Option", "Other Scheme - FoF Domestic"],
+    149775: ["ICICI Prudential Silver ETF FOF - Direct Plan - Growth", "Other Scheme - FoF Domestic"],
+    149780: ["Aditya Birla Sun Life Silver ETF FOF - Direct Plan - GROWTH", "Fund of Funds Scheme (Domestic) - Fund of Funds Scheme (Domestic)"],
     149664: ["Sundaram Liquid Fund - Direct Plan - GROWTH", "Debt Scheme - Liquid Fund"],
   };
 
@@ -710,7 +713,7 @@ test("market-data endpoints expose catalog, quality, and analysis safeguards", a
   assert.equal(classAnalysisResponse.status, 200);
   assert.equal(classAnalysis.status, "research_only");
   assert.equal(classAnalysis.portfolio_recommendations_enabled, false);
-  assert.equal(classAnalysis.proxies.length, 8);
+  assert.equal(classAnalysis.proxies.length, 11);
   assert.deepEqual(classAnalysis.fund_coverage, {
     equity: {
       configured_fund_count: 3,
@@ -733,6 +736,13 @@ test("market-data endpoints expose catalog, quality, and analysis safeguards", a
       configured_status: "target_met",
       data_status: "target_met",
     },
+    commodity: {
+      configured_fund_count: 3,
+      usable_series_count: 3,
+      target_fund_count: 3,
+      configured_status: "target_met",
+      data_status: "target_met",
+    },
     cash_proxy: {
       configured_fund_count: 1,
       usable_series_count: 1,
@@ -744,6 +754,7 @@ test("market-data endpoints expose catalog, quality, and analysis safeguards", a
   assert.match(classAnalysis.methodology.comparison, /not yet enabled/);
   assert.equal(classAnalysis.peer_comparisons.equity.status, "peer_range_available");
   assert.equal(classAnalysis.peer_comparisons.gold.status, "peer_range_available");
+  assert.equal(classAnalysis.peer_comparisons.commodity.status, "peer_range_available");
   assert.equal(classAnalysis.peer_comparisons.debt.status, "peer_range_withheld");
   assert.equal(classAnalysis.peer_comparisons.cash_proxy.status, "peer_range_withheld");
   assert.ok(classAnalysis.proxies.every((proxy) => proxy.representative_proxy_only));

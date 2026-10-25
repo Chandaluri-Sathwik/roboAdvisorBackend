@@ -4,9 +4,25 @@ import {
   buildPortfolioOptions,
   calculateHistoricalRiskMetrics,
   calculateObservedReturn,
+  filterInstrumentsForInvestmentType,
   optimizeAllocationForExpectedReturn,
   rankCandidatesForExpectedReturn,
 } from "../src/services/portfolioSelectionService.js";
+
+test("monthly options include mutual funds while one-time options retain every candidate type", () => {
+  const instruments = [
+    { symbol: "ABC", instrumentType: "stock" },
+    { symbol: "12345", instrumentType: "mutualFund" },
+    { symbol: "GOVT", instrumentType: "governmentBond" },
+  ];
+
+  assert.deepEqual(
+    filterInstrumentsForInvestmentType(instruments, "monthly").map(({ instrumentType }) => instrumentType),
+    ["mutualFund"],
+  );
+  assert.deepEqual(filterInstrumentsForInvestmentType(instruments, "one_time"), instruments);
+  assert.throws(() => filterInstrumentsForInvestmentType(instruments, "weekly"), /investmentType/);
+});
 
 test("one-year observed return uses the closest observation before the one-year cutoff", () => {
   const now = new Date("2025-01-02T00:00:00.000Z");

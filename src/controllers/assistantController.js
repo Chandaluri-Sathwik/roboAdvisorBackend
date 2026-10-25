@@ -6,6 +6,8 @@ import User from "../models/User.js";
 import { HttpError } from "../middleware/errors.js";
 import { calculateProjections } from "../services/planCalculations.js";
 import { generateAssistantReply } from "../services/geminiAssistantService.js";
+import { getMarketNewsSnapshot } from "../services/marketNewsService.js";
+import { getAssistantLiveMarketContext } from "../services/assistantLiveMarketService.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 6;
@@ -69,14 +71,49 @@ export async function sendAssistantMessage(req, res) {
     illustrative_projection: projections,
   };
 
-  const result = await generateAssistantReply({ message, history, planContext });
+  if (isRebalanceRequest(message)) {
+    if (!portfolio?.has_simulated_market) {
+      return res.json({
+        reply: "There is no simulated allocation drift to rebalance yet. Use ‘Simulate market movement’ on the Portfolio page first, then ask me to rebalance. This demo never places real trades.",
+        action: null,
+      });
+    }
+    return res.json({
+      reply: "Your simulated allocation has drifted from its target. I can apply the existing rebalance simulation, which resets the simulated weights to your saved target allocation. It does not buy or sell real instruments. Would you like to confirm?",
+      action: { type: "confirm_rebalance" },
+    });
+  }
+
+  const latestMarketNews = shouldFetchMarketNews(message)
+    ? await getMarketNewsSnapshot({ investmentOptions: portfolio?.investment_options, topic: message })
+    : null;
+  const liveProviderData = shouldFetchLiveProviderData(message)
+    ? await getAssistantLiveMarketContext({ investmentOptions: portfolio?.investment_options, message })
+    : null;
+
+  const result = await generateAssistantReply({ message, history, planContext, latestMarketNews, liveProviderData });
   return res.json(result);
+}
+
+function shouldFetchMarketNews(message) {
+  return /\b(latest|current|today|news|market|price|prices|impact|affect|effect|happening|update)\b/i.test(message);
+}
+
+function shouldFetchLiveProviderData(message) {
+  return /\b(latest|current|today|news|market|nav|fund|price|prices|impact|affect|effect|happening|update|oil|crude)\b/i.test(message);
+}
+
+function isRebalanceRequest(message) {
+  const text = message.toLowerCase();
+  if (!text.includes("rebalance") || /\b(what|why|how|meaning|mean|explain|does)\b/.test(text)) return false;
+  return /\b(now|my|portfolio|apply|confirm|please|go ahead|do it|this|the)\b/.test(text);
 }
 
 function assistantInvestmentOptions(options) {
   if (!options) return null;
   return {
     status: options.status,
+    investment_type: options.investment_type,
     class_amounts: options.class_amounts,
     candidates_by_class: Object.fromEntries(
       Object.entries(options.by_asset_class ?? {}).map(([assetClass, candidates]) => [

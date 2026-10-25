@@ -79,6 +79,27 @@ export const mutualFundUniverse = [
     nameMustInclude: "gold",
   },
   {
+    schemeCode: 149760,
+    schemeName: "Nippon India Silver ETF FOF - Direct Plan - Growth Option",
+    assetClass: "commodity",
+    categoryMustInclude: "fof domestic",
+    nameMustInclude: "silver",
+  },
+  {
+    schemeCode: 149775,
+    schemeName: "ICICI Prudential Silver ETF FOF - Direct Plan - Growth",
+    assetClass: "commodity",
+    categoryMustInclude: "fof domestic",
+    nameMustInclude: "silver",
+  },
+  {
+    schemeCode: 149780,
+    schemeName: "Aditya Birla Sun Life Silver ETF FOF - Direct Plan - GROWTH",
+    assetClass: "commodity",
+    categoryMustInclude: "fund of funds scheme (domestic)",
+    nameMustInclude: "silver",
+  },
+  {
     schemeCode: 149664,
     schemeName: "Sundaram Liquid Fund - Direct Plan - Growth",
     assetClass: "cash_proxy",

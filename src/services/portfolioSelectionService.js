@@ -99,6 +99,15 @@ export function rankCandidatesForExpectedReturn(candidates, expectedReturnPercen
   });
 }
 
+export function filterInstrumentsForInvestmentType(instruments, investmentType) {
+  if (!["one_time", "monthly"].includes(investmentType)) {
+    throw new Error("investmentType must be one_time or monthly.");
+  }
+  return investmentType === "monthly"
+    ? instruments.filter((instrument) => instrument.instrumentType === "mutualFund")
+    : instruments;
+}
+
 export function optimizeAllocationForExpectedReturn({
   baselineAllocation,
   historicalClassEstimates,
@@ -252,11 +261,12 @@ export async function selectPortfolioAssets({
     throw new Error("Monthly investment requires a positive monthly contribution and no initial amount.");
   }
 
-  const instruments = await InvestableInstrument.find({
+  const catalogInstruments = await InvestableInstrument.find({
     isVerified: true,
     isInvestable: true,
     assetClass: { $in: ASSET_CLASSES },
   }).sort({ assetClass: 1, name: 1 }).lean();
+  const instruments = filterInstrumentsForInvestmentType(catalogInstruments, investmentType);
   const symbols = [...new Set(instruments.map((item) => item.schemeCode || item.symbol))];
   const historyBySymbol = new Map();
   const historicalRiskBySymbol = new Map();
@@ -491,6 +501,7 @@ export async function selectPortfolioAssets({
 
   return {
     status: classesWithoutCandidates.length ? "incomplete_verified_instrument_coverage" : "verified_candidates_available_review_required",
+    investment_type: investmentType,
     allocation: recommendedAllocation,
     baseline_allocation: baselineAllocation,
     class_amounts: classAmounts,
@@ -520,6 +531,9 @@ export async function selectPortfolioAssets({
     generated_at: now.toISOString(),
     limitations: [
       "Only catalog records explicitly marked verified and investable are shown as candidates.",
+      ...(investmentType === "monthly"
+        ? ["Monthly options are limited to mutual funds; confirm each scheme's current SIP availability and minimum with the provider."]
+        : []),
       "Candidates are educational comparisons, not buy orders or a guarantee of suitability.",
       "Stock-price and mutual-fund NAV changes are historical observations, not forecasts.",
       "Government-security yield observations are references only; they do not identify a purchasable security.",

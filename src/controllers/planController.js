@@ -120,7 +120,7 @@ export async function updateGoal(req, res) {
 
   const portfolio = await Portfolio.findOne({ goal: goal._id });
   if (portfolio) {
-    portfolio.current_value = goal.investment_type === "one_time" ? goal.initial_investment : 0;
+    portfolio.current_value = illustrativePortfolioValue(goal);
     await portfolio.save();
   }
 
@@ -191,7 +191,7 @@ export async function recommendPortfolio(req, res) {
       unconstrained_risk_profile: assessment.unconstrained_risk_profile,
       target_allocation,
       actual_allocation: target_allocation,
-      current_value: goal.investment_type === "one_time" ? goal.initial_investment : 0,
+      current_value: illustrativePortfolioValue(goal),
       has_simulated_market: false,
       recommendation_version: "historical-return-risk-capped-v2",
       recommendation_explanation: recommendationExplanation(
@@ -254,9 +254,15 @@ export async function simulateMarket(req, res) {
     numberInRange(returnRate, `changes.${assetClass}`, -1, 1);
   }
 
+  const goal = await Goal.findById(portfolio.goal).select(
+    "investment_type initial_investment monthly_contribution",
+  );
+  const startingValue = portfolio.current_value === 0 && goal
+    ? illustrativePortfolioValue(goal)
+    : portfolio.current_value;
   const result = applyMarketReturns({
     allocation: portfolio.actual_allocation.toObject(),
-    current_value: portfolio.current_value,
+    current_value: startingValue,
     changes,
   });
   portfolio.current_value = result.current_value;
@@ -329,6 +335,12 @@ function numberInRange(value, field, minimum, maximum) {
     throw new HttpError(400, `${field} must be a number between ${minimum} and ${maximum}.`);
   }
   return value;
+}
+
+function illustrativePortfolioValue(goal) {
+  return goal.investment_type === "one_time"
+    ? goal.initial_investment
+    : goal.monthly_contribution * 12;
 }
 
 async function findUser(id) {
