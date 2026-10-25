@@ -5,13 +5,10 @@ const rupees = new Intl.NumberFormat("en-IN", {
 });
 
 /**
- * A local, deterministic assistant for explaining the plan already saved in
- * the app. It does not call an AI provider, browse the web, or fetch markets.
- */
-/**
- * Provider selection is server-side. Local mode is the default; Gemini mode
- * requires ASSISTANT_PROVIDER=gemini and a server-only GEMINI_API_KEY.
- * Any provider failure falls back to deterministic portfolio explanations.
+ * Generates educational answers grounded in the saved portfolio context.
+ * Local mode is deterministic. Optional Gemini mode can answer broader
+ * educational questions; failed or timed-out provider calls fall back locally.
+ * Live market data is not fetched by this service.
  */
 export async function generateAssistantReply({ message, history = [], planContext }) {
   const localReply = () => generateLocalReply({ message, planContext });
@@ -121,7 +118,11 @@ async function generateGeminiReply({ message, history, planContext }) {
   );
 
   if (!response.ok) {
-    throw new Error(`Gemini returned HTTP ${response.status}.`);
+    const errorPayload = await response.json().catch(() => null);
+    const detail = typeof errorPayload?.error?.message === "string"
+      ? ` ${errorPayload.error.message.slice(0, 300)}`
+      : "";
+    throw new Error(`Gemini returned HTTP ${response.status}.${detail}`);
   }
 
   const payload = await response.json();
