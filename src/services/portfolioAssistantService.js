@@ -117,7 +117,7 @@ async function generateGeminiReply({ message, history, planContext }) {
           maxOutputTokens: 700,
         },
       }),
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(12_000),
     },
   );
 
