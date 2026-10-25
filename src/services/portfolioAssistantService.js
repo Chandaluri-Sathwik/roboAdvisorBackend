@@ -8,7 +8,40 @@ const rupees = new Intl.NumberFormat("en-IN", {
  * A local, deterministic assistant for explaining the plan already saved in
  * the app. It does not call an AI provider, browse the web, or fetch markets.
  */
-export async function generateAssistantReply({ message, planContext }) {
+/**
+ * Provider selection is server-side. Local mode is the default; Gemini mode
+ * requires ASSISTANT_PROVIDER=gemini and a server-only GEMINI_API_KEY.
+ * Any provider failure falls back to deterministic portfolio explanations.
+ */
+export async function generateAssistantReply({ message, history = [], planContext }) {
+  const localReply = () => generateLocalReply({ message, planContext });
+
+  if (process.env.ASSISTANT_PROVIDER !== "gemini") {
+    return { ...localReply(), provider: "local" };
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    return {
+      ...localReply(),
+      provider: "local",
+      warning: "Gemini mode is selected but GEMINI_API_KEY is not configured on the backend; this answer was generated locally.",
+    };
+  }
+
+  try {
+    const reply = await generateGeminiReply({ message, history, planContext });
+    return { reply, provider: "gemini" };
+  } catch (error) {
+    console.warn("Gemini assistant request failed; returning local portfolio response.", error?.message ?? error);
+    return {
+      ...localReply(),
+      provider: "local",
+      warning: "Gemini could not complete this request; this answer was generated locally from your saved portfolio.",
+    };
+  }
+}
+
+function generateLocalReply({ message, planContext }) {
   const question = message.toLowerCase();
   const portfolio = planContext.portfolio;
 
@@ -36,6 +69,70 @@ export async function generateAssistantReply({ message, planContext }) {
       "Ask about your allocation, risk profile, contribution split, portfolio candidates, projection, or rebalance simulation.",
     ].join("\n\n"),
   };
+}
+
+async function generateGeminiReply({ message, history, planContext }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const model = (process.env.GEMINI_MODEL || "gemini-3.5-flash").trim();
+  const systemInstruction = [
+    "You are FinGuide, an educational portfolio assistant.",
+    "Use only the supplied saved portfolio context. Do not invent prices, current market news, fund facts, tax rules, or performance.",
+    "Explain the user's saved risk profile, asset allocation, contribution split, listed investment candidates, projection assumptions, and simulated rebalancing when relevant.",
+    "Treat historical returns and projections as backward-looking or illustrative, never as guaranteed or predicted results.",
+    "Never tell the user to buy or sell a particular asset as a certainty. Do not claim to place trades. Any rebalance action in this application is a local simulation only.",
+    "Be clear when the saved context does not contain the information needed to answer. Keep answers practical and reasonably concise.",
+  ].join(" ");
+
+  const contents = [
+    ...history.map((item) => ({
+      role: item.role === "assistant" ? "model" : "user",
+      parts: [{ text: item.text }],
+    })),
+    {
+      role: "user",
+      parts: [{
+        text: [
+          `User question: ${message}`,
+          "",
+          "Saved portfolio context (JSON):",
+          JSON.stringify(planContext),
+        ].join("\n"),
+      }],
+    },
+  ];
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents,
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 700,
+        },
+      }),
+      signal: AbortSignal.timeout(8_000),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini returned HTTP ${response.status}.`);
+  }
+
+  const payload = await response.json();
+  const reply = payload?.candidates?.[0]?.content?.parts
+    ?.map((part) => typeof part.text === "string" ? part.text : "")
+    .join("")
+    .trim();
+
+  if (!reply) throw new Error("Gemini returned no usable text.");
+  return reply;
 }
 
 function explainAllocation(planContext, portfolio) {
