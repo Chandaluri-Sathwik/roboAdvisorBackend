@@ -101,24 +101,22 @@ async function generateGeminiReply({ message, history, planContext }) {
     },
   ];
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents,
-        generationConfig: {
-          maxOutputTokens: 1200,
-        },
-      }),
-      signal: AbortSignal.timeout(15_000),
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const requestOptions = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
     },
-  );
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents,
+      generationConfig: {
+        maxOutputTokens: 1200,
+      },
+    }),
+  };
+  const response = await fetchGeminiWithRetry(url, requestOptions);
 
   if (!response.ok) {
     const errorPayload = await response.json().catch(() => null);
@@ -140,6 +138,33 @@ async function generateGeminiReply({ message, history, planContext }) {
     throw new Error("Gemini returned no usable text.");
   }
   return reply.trim();
+}
+
+async function fetchGeminiWithRetry(url, requestOptions) {
+  const maxAttempts = 2;
+  const timeoutMs = 25_000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await fetch(url, {
+      ...requestOptions,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    const retryable = [429, 500, 502, 503, 504].includes(response.status);
+    if (!retryable || attempt === maxAttempts) {
+      return response;
+    }
+
+    const retryDelayMs = 800 * attempt;
+    console.warn(
+      `Gemini returned transient HTTP ${response.status}; retrying once in ${retryDelayMs}ms.`,
+    );
+    // Consume the first response before retrying it.
+    await response.text().catch(() => "");
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+
+  throw new Error("Gemini request failed after retry.");
 }
 
 function explainAllocation(planContext, portfolio) {
