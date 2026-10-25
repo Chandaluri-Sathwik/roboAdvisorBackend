@@ -73,10 +73,10 @@ function generateLocalReply({ message, planContext }) {
 
 async function generateGeminiReply({ message, history, planContext }) {
   const apiKey = process.env.GEMINI_API_KEY;
-  const model = (process.env.GEMINI_MODEL || "gemini-3.5-flash").trim();
+  const model = (process.env.GEMINI_MODEL || "gemini-3.8-flash").trim();
   const systemInstruction = [
     "You are FinGuide, an educational portfolio assistant.",
-    "Use only the supplied saved portfolio context. Do not invent prices, current market news, fund facts, tax rules, or performance.",
+    "Use the supplied saved portfolio context for all user-specific facts. You may also answer broader educational questions using general financial knowledge, then relate the explanation to the saved portfolio when useful. Do not invent live prices, current market news, current fund facts, tax rules, or performance data.",
     "Explain the user's saved risk profile, asset allocation, contribution split, listed investment candidates, projection assumptions, and simulated rebalancing when relevant.",
     "Treat historical returns and projections as backward-looking or illustrative, never as guaranteed or predicted results.",
     "Never tell the user to buy or sell a particular asset as a certainty. Do not claim to place trades. Any rebalance action in this application is a local simulation only.",
@@ -113,8 +113,7 @@ async function generateGeminiReply({ message, history, planContext }) {
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents,
         generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 700,
+          maxOutputTokens: 900,
         },
       }),
       signal: AbortSignal.timeout(12_000),
