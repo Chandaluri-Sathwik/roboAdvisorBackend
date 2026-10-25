@@ -78,6 +78,8 @@ async function generateGeminiReply({ message, history, planContext }) {
     "Treat historical returns and projections as backward-looking or illustrative, never as guaranteed or predicted results.",
     "Never tell the user to buy or sell a particular asset as a certainty. Do not claim to place trades. Any rebalance action in this application is a local simulation only.",
     "Be clear when the saved context does not contain the information needed to answer. Keep answers practical and reasonably concise.",
+    "Format all responses as clean Markdown: start with a short useful heading when appropriate; use **bold** for important figures or labels; use short paragraphs; use numbered steps for processes and bullet lists for comparisons; use a Markdown table only when it genuinely improves a comparison; separate sections with blank lines. Avoid raw HTML, giant paragraphs, excessive headings, and repeating the disclaimer in every section.",
+    "When discussing the user's generated portfolio, explicitly distinguish saved portfolio facts from general educational explanation. Never suggest that a hypothetical alternative has already been applied to the saved portfolio.",
   ].join(" ");
 
   const contents = [
