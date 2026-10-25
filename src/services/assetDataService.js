@@ -23,7 +23,7 @@ const numberOrUndefined = (value) => {
 };
 
 // MFapi dates use DD-MM-YYYY.
-const parseMFapiDate = (value) => {
+export const parseMFapiDate = (value) => {
   const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(
     String(value ?? "")
   );
@@ -32,9 +32,19 @@ const parseMFapiDate = (value) => {
 
   const [, dd, mm, yyyy] = match;
 
-  return new Date(
+  const date = new Date(
     Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd))
   );
+
+  if (
+    date.getUTCDate() !== Number(dd) ||
+    date.getUTCMonth() !== Number(mm) - 1 ||
+    date.getUTCFullYear() !== Number(yyyy)
+  ) {
+    return null;
+  }
+
+  return date;
 };
 
 // ---------------- STOCKS ----------------
@@ -188,7 +198,11 @@ export const fetchMutualFundHistory = async ({ schemeCode }) => {
 
   const payload = response.data;
 
-  if (!Array.isArray(payload?.data)) {
+  if (
+    payload?.status !== "SUCCESS" ||
+    !payload?.meta ||
+    !Array.isArray(payload?.data)
+  ) {
     throw new Error(
       `Unexpected MFapi response for scheme ${code}.`
     );
@@ -196,13 +210,18 @@ export const fetchMutualFundHistory = async ({ schemeCode }) => {
 
   const schemeName =
     payload.meta?.scheme_name ?? `MF_SCHEME_${code}`;
+  if (String(payload.meta.scheme_code) !== code) {
+    throw new Error(
+      `MFapi returned scheme ${payload.meta.scheme_code} while ${code} was requested.`
+    );
+  }
 
   return payload.data
     .map((row) => {
       const date = parseMFapiDate(row.date);
       const nav = numberOrUndefined(row.nav);
 
-      if (!date || nav === undefined) return null;
+      if (!date || nav === undefined || nav <= 0) return null;
 
       return {
         assetType: "mutualFund",
@@ -217,6 +236,9 @@ export const fetchMutualFundHistory = async ({ schemeCode }) => {
           ...row,
           schemeCode: code,
           schemeName,
+          schemeCategory: payload.meta.scheme_category ?? null,
+          fundHouse: payload.meta.fund_house ?? null,
+          isinGrowth: payload.meta.isin_growth ?? null,
         },
       };
     })

@@ -54,7 +54,7 @@ export const getLatestMutualFundNAV = async (req, res) => {
         fetchedAt: new Date()
       },
       {
-        new: true,
+        returnDocument: "after",
         upsert: true,
         runValidators: true
       }

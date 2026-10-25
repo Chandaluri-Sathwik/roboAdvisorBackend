@@ -5,10 +5,9 @@
  * Constituents change over time; verify against the latest NSE/BSE lists before
  * using this for production portfolio recommendations.
  *
- * Mutual funds: add verified MFapi.in scheme codes. The code deliberately does
- * not label an unverified list as "top 10 by AUM". Pick the 10 largest schemes
- * by AUM in each category from a dated, reliable source, prefer Direct-Growth,
- * then paste the exact MFapi scheme codes below.
+ * Mutual funds: research proxies are not endorsements or a ranking. Add only
+ * MFapi.in schemes with verified identity, category, Direct-Growth option, and
+ * current NAV history. Do not claim complete class coverage from a partial set.
  */
 
 export const stockUniverse = [
@@ -26,32 +25,73 @@ export const stockUniverse = [
   "HAVELLS", "DABUR", "GODREJCP", "SHRIRAMFIN", "VEDL", "ZOMATO"
 ];
 
-// Populate with verified MFapi.in scheme codes before running hello the seed script.
-// Shape: { category: "largeCap" | "midCap" | "smallCap" | "hybrid",
-//          schemeCode: "numeric MFapi scheme code", schemeName: "optional label" }
+// Research-only class proxies. The selected groups target three schemes per
+// class, but debt and cash-like coverage remain incomplete until fresh,
+// category-matched candidates are verified.
 export const mutualFundUniverse = [
+  {
+    schemeCode: 120716,
+    schemeName: "UTI Nifty 50 Index Fund - Direct Plan - Growth",
+    assetClass: "equity",
+    categoryMustInclude: "index funds",
+    nameMustInclude: "nifty 50",
+  },
+  {
+    schemeCode: 118482,
+    schemeName: "Bandhan Nifty 50 Index Fund - Direct Plan - Growth",
+    assetClass: "equity",
+    categoryMustInclude: "index funds",
+    nameMustInclude: "nifty 50",
+  },
+  {
+    schemeCode: 118741,
+    schemeName: "Nippon India Index Fund - Nifty 50 Plan - Direct Plan - Growth Option",
+    assetClass: "equity",
+    categoryMustInclude: "index funds",
+    nameMustInclude: "nifty 50",
+  },
+  {
+    schemeCode: 120754,
+    schemeName: "ICICI Prudential Short Term Fund - Direct Plan - Growth",
+    assetClass: "debt",
+    categoryMustInclude: "short duration fund",
+    nameMustInclude: "short term fund",
+  },
+  {
+    schemeCode: 119781,
+    schemeName: "Kotak Gold Fund - Direct Plan - Growth",
+    assetClass: "gold",
+    categoryMustInclude: "fof domestic",
+    nameMustInclude: "gold",
+  },
+  {
+    schemeCode: 154295,
+    schemeName: "HSBC Gold ETF Fund of Fund - Direct Plan - Growth",
+    assetClass: "gold",
+    categoryMustInclude: "fund of funds scheme (domestic)",
+    nameMustInclude: "gold",
+  },
+  {
+    schemeCode: 119132,
+    schemeName: "HDFC Gold ETF Fund of Fund - Direct Plan - Growth Option",
+    assetClass: "gold",
+    categoryMustInclude: "fof domestic",
+    nameMustInclude: "gold",
+  },
+  {
+    schemeCode: 149664,
+    schemeName: "Sundaram Liquid Fund - Direct Plan - Growth",
+    assetClass: "cash_proxy",
+    categoryMustInclude: "liquid fund",
+    nameMustInclude: "liquid fund",
+  },
+];
 
-  // Flexi-cap equity
-  122639, // Parag Parikh Flexi Cap Fund
+export const targetFundCountPerProxyClass = 3;
 
-  // Large & mid-cap equity
-  145110, // Axis Large & Mid Cap Fund
-
-  // Index funds
-  118347, // IDBI NIFTY 50 Index Fund
-  118348, // IDBI Nifty Next 50 Index Fund
-  148363, // L&T Next Nifty 50 Index Fund
-  120684, // ICICI Prudential Nifty Next 50 Index Fund
-  143341, // UTI Nifty Next 50 Index Fund
-
-  // Balanced advantage funds
-  119298, // L&T Balanced Advantage Fund
-  119482, // Principal Balanced Advantage Fund
-
-  // Fund-of-funds schemes returned by the search
-  132185, // Aditya Birla Sun Life Aggressive Hybrid Omni FOF
-  129200, // HSBC Aggressive Hybrid Active FOF
-  120700, // ICICI Prudential Aggressive Hybrid Active FOF
+export const additionalMutualFundHistoryUniverse = [
+  122639, 145110, 118347, 118348, 148363, 120684, 143341,
+  119298, 119482, 132185, 129200, 120700,
 ];
 
 export const commodityUniverse = [

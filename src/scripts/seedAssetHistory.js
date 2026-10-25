@@ -17,6 +17,7 @@ import {
   mutualFundUniverse,
   commodityUniverse,
   bondUniverse,
+  additionalMutualFundHistoryUniverse,
   seedOptions,
 } from "../config/assetUniverse.js";
 
@@ -124,6 +125,17 @@ const main = async () => {
       await sleep(seedOptions.delayMs);
     }
 
+    const verifiedFundCodes = new Set(mutualFundUniverse.map((fund) => String(fund.schemeCode)));
+    for (const schemeCode of additionalMutualFundHistoryUniverse) {
+      if (verifiedFundCodes.has(String(schemeCode))) continue;
+      results.push(
+        await runTask(`additional mutual-fund history ${schemeCode} (research-only)`, () =>
+          fetchMutualFundHistory({ schemeCode })
+        )
+      );
+      await sleep(seedOptions.delayMs);
+    }
+
     // COMMODITIES
     for (const commodity of commodityUniverse) {
       results.push(
@@ -209,4 +221,3 @@ main().catch(async (error) => {
     await mongoose.disconnect();
   }
 });
-
